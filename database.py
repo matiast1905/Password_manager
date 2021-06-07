@@ -17,6 +17,7 @@ class Database:
                     pass text
                     )"""
                 )
+                conn.commit()
         except sqlite3.OperationalError:
             print("Error creating database.")
 
@@ -33,6 +34,7 @@ class Database:
                 f"INSERT INTO passwords VALUES(:site,:user,:pass)",
                 {"site": site, "user": user, "pass": str(password)},
             )
+            conn.commit()
             return True
 
     def load_from_database(self, site):
@@ -40,6 +42,7 @@ class Database:
             cursor = conn.cursor()
             cursor.execute(f"SELECT * FROM passwords WHERE site=:site", {"site": site})
             ans = cursor.fetchall()
+            conn.commit()
             return ans
 
     def get_every_item_from_database(self):
@@ -47,6 +50,7 @@ class Database:
             cursor = conn.cursor()
             cursor.execute(f"SELECT * FROM passwords")
             ans = cursor.fetchall()
+            conn.commit()
             return ans
 
     def remove_from_database(self, site, user):
@@ -56,6 +60,7 @@ class Database:
                 f"DELETE FROM passwords WHERE site=:site and user=:user",
                 {"site": site, "user": user},
             )
+            conn.commit()
 
     def update_in_database(self, site, user, password):
         with sqlite3.connect(self.database) as conn:
@@ -64,3 +69,4 @@ class Database:
                 f"UPDATE passwords SET pass=:pass WHERE site=:site and user=:user",
                 {"site": site, "user": user, "pass": password},
             )
+            conn.commit()

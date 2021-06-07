@@ -27,11 +27,11 @@ def check_master_key(user_master_key, key, database: Database, salt):
         return False
 
 
-def get_public_master_key_from_db(key, database: Database):
-    return database.load_from_database(key)
+def get_public_master_key_from_db(database: Database):
+    return database.load_from_database(MASTER_KEY_NAME_IN_DB)
 
 
-def create_public_master_key(master_key, database: Database):
+def create_public_master_key(database: Database):
     print()
     print("Password manager".center(80, "-"), end="\n\n")
     print("Welcome to password manager.")
@@ -39,11 +39,11 @@ def create_public_master_key(master_key, database: Database):
     print(
         "Remember that this password must be really secure, and the only password you should remember"
     )
-    key = input("Please enter a secure password: ").strip()
+    key = input("\nPlease enter a secure password: ").strip()
     key = key + SALT
     enc_key = encryptors.key_encrypt_sha256(key)
-    database.save_to_database(master_key, "-", enc_key)
-    print("Master key added successfully")
+    database.save_to_database(MASTER_KEY_NAME_IN_DB, "-", enc_key)
+    print("\nMaster key added successfully")
 
 
 def ask_user_for_master_key():
@@ -68,14 +68,16 @@ def menu():
     print("\t3) Change a password")
     print("\t4) Delete a password")
     print("\t5) See a list of all the sites, users and passwords")
+    print("\t6) Change the master key")
     print()
     print("Insert one option(q to escape): ", end="")
 
     while True:
         ans = input()
         if ans == "q":
+            print("\nThank you for using password manager")
             sys.exit()
-        if ans in {"1", "2", "3", "4", "5"}:
+        if ans in {"1", "2", "3", "4", "5", "6"}:
             return int(ans)
         else:
             print("That's not a valid option. Please try again: ", end="")
@@ -185,22 +187,53 @@ def print_all_users(database: Database, master_key):
         print_record(user, decrypted_pass)
 
 
+def change_master_key(database: Database, master_key):
+    print("\nYou want to replace the master key.")
+    print("Be careful, if your replace the master key all the passwords will be replace, and you will have to")
+    print("log in all your accounts with the new password.")
+    answer = input("\nAre you sure you want to continue?:(yes/no): ")
+    while True:
+        if answer == "no":
+            print("You decide not to change the master key.")
+            return False
+        if answer == "yes":
+            break
+        answer = input("Incorrect option, please enter a correct option: ")
+    master_key = input("Please enter a secure password: ").strip()
+    salt_key = master_key + SALT
+    enc_salt_key = encryptors.key_encrypt_sha256(salt_key)
+    database.remove_from_database(MASTER_KEY_NAME_IN_DB,"-")
+    database.save_to_database(MASTER_KEY_NAME_IN_DB, "-", enc_salt_key)
+    print("Master key replaced successfully")
+    enc_master_key = encryptors.key_encrypt_sha256(master_key)
+    users = database.get_every_item_from_database()
+    for user in users:
+        if user[0] == MASTER_KEY_NAME_IN_DB:
+            continue
+        database.remove_from_database(user[0],user[1])
+        password = encryptors.generate_password()
+        enc_password = encryptors.password_encrypt(password, enc_master_key)
+        database.save_to_database(user[0],user[1], str(enc_password))
+    print("All your passwords were replaced in the database.")
+    return master_key
+    
+
 def ask_user_if_wants_to_continue_operating():
     while True:
-        answer = input("\nDo you want to continue operating? (yes/no): ")
+        answer = input("\nDo you want to continue operating? (yes/no)[yes]: ")
         if answer == "no":
             print("Thank you for using password manager")
             sys.exit()
-        elif answer == "yes":
+        elif answer == "yes" or answer == "":
             break
         else:
             print("Please enter a valid command.")
 
 
 if __name__ == "__main__":
-    public_master_key = get_public_master_key_from_db(MASTER_KEY_NAME_IN_DB, passwords_db)
+    public_master_key = get_public_master_key_from_db(passwords_db)
     if not public_master_key:
-        create_public_master_key(MASTER_KEY_NAME_IN_DB, passwords_db)
+        create_public_master_key(passwords_db)
     master_key = ask_user_for_master_key()
     enc_master_key = encryptors.key_encrypt_sha256(master_key)
     while True:
@@ -218,4 +251,9 @@ if __name__ == "__main__":
             delete_a_password(passwords_db, enc_master_key)
         if option_selected == 5:
             print_all_users(passwords_db, enc_master_key)
+        if option_selected == 6:
+            ans = change_master_key(passwords_db, enc_master_key)
+            if ans != False:
+                master_key = ans
+                enc_master_key = encryptors.key_encrypt_sha256(master_key)
         ask_user_if_wants_to_continue_operating()

@@ -14,7 +14,7 @@ def generate_password(length=20):
 
 
 def password_encrypt(password, encrypted_key):
-    return int.from_bytes(password.encode(), "big") ^ int(encrypted_key)
+    return int.from_bytes(password.encode(), "big") ^ encrypted_key
 
 
 def password_decrypt(encrypted_password, encrypted_key):
