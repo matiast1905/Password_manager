@@ -5,4 +5,3 @@ The only thing that must remember secret is the master key created by the user.
 
 ## TODO
   * Implement a synchronization of the database with a web server
-  * Implement a function to change the master key, which will change all the passwords in the database
