@@ -104,7 +104,7 @@ def print_record(row, decrypted_pass):
     print("Password:", decrypted_pass)
     print("-" * 40)
 
-
+# OPTIMIZE: Encode site and user
 def create_new_password(database: Database, enc_master_key, site=None, user=None):
     if not site:
         site = input("\nPlease enter a site: ")
@@ -187,10 +187,8 @@ def print_all_users(database: Database, master_key):
         print_record(user, decrypted_pass)
 
 
-def change_master_key(database: Database, master_key):
+def change_master_key(database: Database, old_master_key):
     print("\nYou want to replace the master key.")
-    print("Be careful, if your replace the master key all the passwords will be replace, and you will have to")
-    print("log in all your accounts with the new password.")
     answer = input("\nAre you sure you want to continue?:(yes/no): ")
     while True:
         if answer == "no":
@@ -199,23 +197,23 @@ def change_master_key(database: Database, master_key):
         if answer == "yes":
             break
         answer = input("Incorrect option, please enter a correct option: ")
-    master_key = input("Please enter a secure password: ").strip()
-    salt_key = master_key + SALT
-    enc_salt_key = encryptors.key_encrypt_sha256(salt_key)
+    new_master_key = input("Please enter a secure password: ").strip()
+    new_master_key_salted = new_master_key + SALT
+    new_master_key_salted_encripted = encryptors.key_encrypt_sha256(new_master_key_salted)
     database.remove_from_database(MASTER_KEY_NAME_IN_DB,"-")
-    database.save_to_database(MASTER_KEY_NAME_IN_DB, "-", enc_salt_key)
+    database.save_to_database(MASTER_KEY_NAME_IN_DB, "-", new_master_key_salted_encripted)
     print("Master key replaced successfully")
-    enc_master_key = encryptors.key_encrypt_sha256(master_key)
+    new_master_key_encripted = encryptors.key_encrypt_sha256(new_master_key)
     users = database.get_every_item_from_database()
     for user in users:
         if user[0] == MASTER_KEY_NAME_IN_DB:
             continue
+        decrypted_pass = encryptors.password_decrypt(int(user[2]), old_master_key)
         database.remove_from_database(user[0],user[1])
-        password = encryptors.generate_password()
-        enc_password = encryptors.password_encrypt(password, enc_master_key)
-        database.save_to_database(user[0],user[1], str(enc_password))
-    print("All your passwords were replaced in the database.")
-    return master_key
+        new_password_encripted = encryptors.password_encrypt(decrypted_pass, new_master_key_encripted)
+        database.save_to_database(user[0],user[1], str(new_password_encripted))
+    print("Your master key has been changed. All your passwords were encripted with the new master key")
+    return new_master_key
     
 
 def ask_user_if_wants_to_continue_operating():

@@ -5,3 +5,4 @@ The only thing that must remember secret is the master key created by the user.
 
 ## TODO
   * Implement a synchronization of the database with a web server
+  * Hash the site and user in the database
