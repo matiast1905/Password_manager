@@ -31,8 +31,8 @@ def site_user_and_password_decrypt(database_row, encrypted_key):
     decrypted_user = int(encripted_user) ^ encrypted_key
     decrypted_pass = int(encrypted_password) ^ encrypted_key
     return (
-        decrypted_site.to_bytes((decrypted_pass.bit_length() + 7) // 8, "big").decode(),
-        decrypted_user.to_bytes((decrypted_pass.bit_length() + 7) // 8, "big").decode(),
+        decrypted_site.to_bytes((decrypted_site.bit_length() + 7) // 8, "big").decode(),
+        decrypted_user.to_bytes((decrypted_user.bit_length() + 7) // 8, "big").decode(),
         decrypted_pass.to_bytes((decrypted_pass.bit_length() + 7) // 8, "big").decode(),
     )
 
