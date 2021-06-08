@@ -1,6 +1,7 @@
 import sys
 
 import pyperclip
+import stdiomask
 
 import encryptors
 from database import Database
@@ -40,8 +41,9 @@ def create_public_master_key(database: Database):
         "Remember that this password must be really secure, and the only password you should remember"
     )
     while True:
-        key = input("\nPlease enter a secure password: ").strip()
-        key2 = input("Please enter the same password again: ").strip()
+        print()
+        key = stdiomask.getpass("Please enter a secure password:")
+        key2 = stdiomask.getpass("Please enter the same password again: ")
         if key == key2:
             break
         else:
@@ -57,7 +59,7 @@ def ask_user_for_master_key():
     print("Password manager".center(80, "-"), end="\n\n")
     print("Please insert the master key: ",end="")
     while True:
-        master_key = input().strip()
+        master_key = stdiomask.getpass(prompt='')
         if check_master_key(master_key, MASTER_KEY_NAME_IN_DB, passwords_db, SALT):
             print("\nWelcome to the system.")
             return master_key
