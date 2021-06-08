@@ -39,7 +39,13 @@ def create_public_master_key(database: Database):
     print(
         "Remember that this password must be really secure, and the only password you should remember"
     )
-    key = input("\nPlease enter a secure password: ").strip()
+    while True:
+        key = input("\nPlease enter a secure password: ").strip()
+        key2 = input("Please enter the same password again: ").strip()
+        if key == key2:
+            break
+        else:
+            print("The passwords doesn't match")
     key = key + SALT
     enc_key = encryptors.key_encrypt_sha256(key)
     database.save_to_database(MASTER_KEY_NAME_IN_DB, "-", enc_key)
@@ -49,7 +55,7 @@ def create_public_master_key(database: Database):
 def ask_user_for_master_key():
     print()
     print("Password manager".center(80, "-"), end="\n\n")
-    print("Please insert the master key: ", end="")
+    print("Please insert the master key: ",end="")
     while True:
         master_key = input().strip()
         if check_master_key(master_key, MASTER_KEY_NAME_IN_DB, passwords_db, SALT):
@@ -85,26 +91,28 @@ def menu():
 
 def get_a_password(database: Database, master_key):
     site = input("\nPlease, enter a site: ")
-    ans = database.load_from_database(site)
+    site_encrypted = encryptors.field_encrypt(site,master_key)
+    ans = database.load_from_database(site_encrypted)
     if not ans:
         print("There is no user and password for that site")
         return None
     for row in ans:
-        decrypted_pass = encryptors.password_decrypt(int(row[2]), master_key)
-        print_record(row, decrypted_pass)
-        pyperclip.copy(str(decrypted_pass))
+        site,user,password = encryptors.site_user_and_password_decrypt(row, master_key)
+        print_record(site,user,password)      
+    pyperclip.copy(str(password))
+    print("The password was copied to the clipboard")    
     return ans
 
 
-def print_record(row, decrypted_pass):
+def print_record(site,user,password):
     print()
     print("-" * 40)
-    print("Site:", row[0])
-    print("User or mail:", row[1])
-    print("Password:", decrypted_pass)
+    print("Site:", site)
+    print("User or mail:", user)
+    print("Password:", password)
     print("-" * 40)
 
-# OPTIMIZE: Encode site and user
+
 def create_new_password(database: Database, enc_master_key, site=None, user=None):
     if not site:
         site = input("\nPlease enter a site: ")
@@ -116,12 +124,13 @@ def create_new_password(database: Database, enc_master_key, site=None, user=None
     else:
         length = 20
     password = encryptors.generate_password(length)
-    enc_password = encryptors.password_encrypt(password, enc_master_key)
-    ans = database.save_to_database(site, user, str(enc_password))
+    enc_site,enc_user,enc_password = encryptors.site_user_and_password_encrypt(site,user,password, enc_master_key)
+    ans = database.save_to_database(enc_site,enc_user,enc_password)
     if not ans:
         return
     print("\nYour generated password is:", password)
     pyperclip.copy(str(password))
+    print("The password was copied to the clipboard")
 
 
 def change_a_password(database: Database, enc_master_key):
@@ -133,7 +142,9 @@ def change_a_password(database: Database, enc_master_key):
         ans = input("Do you want to change this password?(yes/no): ")
         if ans == "yes":
             database.remove_from_database(records[0][0], records[0][1])
-            create_new_password(database, enc_master_key, records[0][0], records[0][1])
+            site = encryptors.field_decrypt(records[0][0],enc_master_key)
+            user = encryptors.field_decrypt(records[0][1],enc_master_key)
+            create_new_password(database, enc_master_key, site, user)
             return
         else:
             print("Password wasn't changed.")
@@ -147,7 +158,9 @@ def change_a_password(database: Database, enc_master_key):
                 break
         to_change = int(to_change) - 1
         database.remove_from_database(records[to_change][0], records[to_change][1])
-        create_new_password(database, enc_master_key, records[to_change][0], records[to_change][1])
+        site = encryptors.field_decrypt(records[to_change][0],enc_master_key)
+        user = encryptors.field_decrypt(records[to_change][1],enc_master_key)
+        create_new_password(database, enc_master_key, site, user)
         return
 
 
@@ -180,13 +193,16 @@ def delete_a_password(database: Database, enc_master_key):
 
 def print_all_users(database: Database, master_key):
     users = database.get_every_item_from_database()
+    if len(users)<2: #Only public key record in the database
+        print("\nThere is no record in the database")
+        return
     for user in users:
         if user[0] == MASTER_KEY_NAME_IN_DB:
             continue
-        decrypted_pass = encryptors.password_decrypt(int(user[2]), master_key)
-        print_record(user, decrypted_pass)
+        site,user,password = encryptors.site_user_and_password_decrypt(user, master_key)
+        print_record(site,user,password)
 
-
+#FIXME: Fix to encode user and site
 def change_master_key(database: Database, old_master_key):
     print("\nYou want to replace the master key.")
     answer = input("\nAre you sure you want to continue?:(yes/no): ")
@@ -208,12 +224,12 @@ def change_master_key(database: Database, old_master_key):
     for user in users:
         if user[0] == MASTER_KEY_NAME_IN_DB:
             continue
-        decrypted_pass = encryptors.password_decrypt(int(user[2]), old_master_key)
+        decrypted_pass = encryptors.field_decrypt(user[2], old_master_key)
         database.remove_from_database(user[0],user[1])
-        new_password_encripted = encryptors.password_encrypt(decrypted_pass, new_master_key_encripted)
-        database.save_to_database(user[0],user[1], str(new_password_encripted))
+        new_password_encripted = encryptors.field_encrypt(decrypted_pass, new_master_key_encripted)
+        database.save_to_database(user[0],user[1], new_password_encripted)
     print("Your master key has been changed. All your passwords were encripted with the new master key")
-    return new_master_key
+    return new_master_key_encripted
     
 
 def ask_user_if_wants_to_continue_operating():
@@ -238,13 +254,10 @@ if __name__ == "__main__":
         option_selected = menu()
         if option_selected == 1:
             get_a_password(passwords_db, enc_master_key)
-            print("The password was copied to the clipboard")
         if option_selected == 2:
             create_new_password(passwords_db, enc_master_key)
-            print("The password was copied to the clipboard")
         if option_selected == 3:
             change_a_password(passwords_db, enc_master_key)
-            print("The password was copied to the clipboard")
         if option_selected == 4:
             delete_a_password(passwords_db, enc_master_key)
         if option_selected == 5:
@@ -252,6 +265,5 @@ if __name__ == "__main__":
         if option_selected == 6:
             ans = change_master_key(passwords_db, enc_master_key)
             if ans != False:
-                master_key = ans
-                enc_master_key = encryptors.key_encrypt_sha256(master_key)
+                enc_master_key = ans
         ask_user_if_wants_to_continue_operating()

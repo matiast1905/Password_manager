@@ -26,13 +26,13 @@ class Database:
             cursor = conn.cursor()
             if cursor.execute(
                 f"SELECT * FROM passwords WHERE site=:site and user=:user",
-                {"site": site, "user": user},
+                {"site": str(site), "user": str(user)},
             ).fetchone():
                 print("Error,user for that site exist already.")
                 return None
             cursor.execute(
                 f"INSERT INTO passwords VALUES(:site,:user,:pass)",
-                {"site": site, "user": user, "pass": str(password)},
+                {"site": str(site), "user": str(user), "pass": str(password)},
             )
             conn.commit()
             return True
