@@ -19,6 +19,31 @@ SALT = "AnYtHiNg"
 passwords_db = Database(PASSWORD_DATABASE)
 
 
+def menu():
+    print()
+    print("-" * 60)
+    print("\nWhat do you want to do?", end="\n\n")
+    print("\t1) Get a password")
+    print("\t2) Create a new password")
+    print("\t3) Save a password")
+    print("\t4) Change a password")
+    print("\t5) Delete a password")
+    print("\t6) See a list of all the sites, users and passwords")
+    print("\t7) Change the master key")
+    print()
+    print("Insert one option(q to escape): ", end="")
+
+    while True:
+        ans = input()
+        if ans == "q":
+            print("\nThank you for using password manager")
+            sys.exit()
+        if ans in {"1", "2", "3", "4", "5", "6"}:
+            return int(ans)
+        else:
+            print("That's not a valid option. Please try again: ", end="")
+
+
 def check_master_key(user_master_key, key, database: Database, salt):
     enc_master_key = database.load_from_database(key)[0][2]
     enc_user_mc = str(encryptors.key_encrypt_sha256(user_master_key + salt))
@@ -67,30 +92,6 @@ def ask_user_for_master_key():
             print("The key is invalid, please enter a valid key: ", end="")
 
 
-def menu():
-    print()
-    print("-" * 60)
-    print("\nWhat do you want to do?", end="\n\n")
-    print("\t1) Get a password")
-    print("\t2) Create a new password")
-    print("\t3) Change a password")
-    print("\t4) Delete a password")
-    print("\t5) See a list of all the sites, users and passwords")
-    print("\t6) Change the master key")
-    print()
-    print("Insert one option(q to escape): ", end="")
-
-    while True:
-        ans = input()
-        if ans == "q":
-            print("\nThank you for using password manager")
-            sys.exit()
-        if ans in {"1", "2", "3", "4", "5", "6"}:
-            return int(ans)
-        else:
-            print("That's not a valid option. Please try again: ", end="")
-
-
 def get_a_password(database: Database, master_key):
     site = input("\nPlease, enter a site: ")
     site_encrypted = encryptors.field_encrypt(site, master_key)
@@ -135,6 +136,19 @@ def create_new_password(database: Database, enc_master_key, site=None, user=None
     print("\nYour generated password is:", password)
     pyperclip.copy(str(password))
     print("The password was copied to the clipboard")
+
+
+def save_a_password(database: Database, enc_master_key):
+    site = input("\nPlease enter a site: ")
+    user = input("Please enter a user or email: ")
+    password = input("Please enter a password: ")
+    enc_site, enc_user, enc_password = encryptors.site_user_and_password_encrypt(
+        site, user, password, enc_master_key
+    )
+    ans = database.save_to_database(enc_site, enc_user, enc_password)
+    if not ans:
+        return
+    print("Your password was saved to the database")
 
 
 def change_a_password(database: Database, enc_master_key):
@@ -263,12 +277,14 @@ if __name__ == "__main__":
         if option_selected == 2:
             create_new_password(passwords_db, enc_master_key)
         if option_selected == 3:
-            change_a_password(passwords_db, enc_master_key)
+            save_a_password(passwords_db, enc_master_key)
         if option_selected == 4:
-            delete_a_password(passwords_db, enc_master_key)
+            change_a_password(passwords_db, enc_master_key)
         if option_selected == 5:
-            print_all_users(passwords_db, enc_master_key)
+            delete_a_password(passwords_db, enc_master_key)
         if option_selected == 6:
+            print_all_users(passwords_db, enc_master_key)
+        if option_selected == 7:
             ans = change_master_key(passwords_db, enc_master_key)
             if ans != False:
                 enc_master_key = ans
